@@ -35,10 +35,10 @@ public class PuissanceQuatre extends PApplet {
   private boolean gameOver;
   /** Gestion de rebond sur clic de souris */
   private boolean doOnce;
-  /** Couleur du joueur 1 (vert) */
-  private final int colorPlayer1 = color(191, 231, 0);
-  /** Couleur du joueur 2 (rose) */
-  private final int colorPlayer2 = color(231, 0, 191);
+  /** Couleur du joueur 1 */
+  private int colorPlayer1;
+  /** Couleur du joueur 2 */
+  private int colorPlayer2;
 
   /** Point d'entree de l'application */
   public static void main(String[] args) {
@@ -55,14 +55,15 @@ public class PuissanceQuatre extends PApplet {
   @Override
   public void setup() {
     surface.setLocation(1040, 180);
-    noStroke();
+    placed = new Jeton[nbCols][nbRows];
     size = width / nbCols;
-    doOnce = false;
+    emptyCircle = buildShape(size);
     player1 = true;
     checkEndGame = false;
     gameOver = false;
-    placed = new Jeton[nbCols][nbRows];
-    buildShape();
+    doOnce = false;
+    colorPlayer1 = color(191, 231, 0); // Vert
+    colorPlayer2 = color(231, 0, 191); // Rose
   }
 
   /** Gere l'animation */
@@ -73,11 +74,10 @@ public class PuissanceQuatre extends PApplet {
 
     // Gestion de l'animation de chute du jeton
     if (token != null) {
-      token.animate();
-      // Si le jeton a fini son deplacement, il est inclus
-      // dans le tableau des jetons places, et la victoire peut
-      // etre verifiee
-      if (token.getVel() == 0) {
+      if (token.animate()) {
+        // Si le jeton a fini son deplacement, il est inclus
+        // dans le tableau des jetons places, et la victoire peut
+        // etre verifiee
         placed[floor(token.getX() / size)][floor(token.getY() / size)] = token;
         token = null;
         checkEndGame = true;
@@ -86,13 +86,7 @@ public class PuissanceQuatre extends PApplet {
 
     // Affichage de tous les jetons places 
     // et la grille de jeu
-    for (int i = 0; i < nbCols; i++) {
-      for (int j = 0; j < nbRows; j++) {
-        if (placed[i][j] != null) {
-          placed[i][j].show();
-        }
-      }
-    }
+    showTokens();
     showBoard();
 
     // Ajouts graphiques
@@ -108,6 +102,7 @@ public class PuissanceQuatre extends PApplet {
       }
       int x = xIndex * size + size / 2;
       int y = -size / 2;
+      noStroke();
       if (player1) {
         fill(colorPlayer1);
       } else {
@@ -124,6 +119,8 @@ public class PuissanceQuatre extends PApplet {
           break;
         }
       }
+      // Si l'emplacement est valide, 
+      // montre l'emplacement
       if (yIndex != -1) {
         noFill();
         if (player1) {
@@ -136,43 +133,61 @@ public class PuissanceQuatre extends PApplet {
         ellipse(x, y, size * .9f, size * .9f);
         strokeWeight(1);
         noStroke();
+      } 
+      // Sinon, grise le jeton au dessus de la grille
+      else {
+        noStroke();
+        fill(0, 150);
+        ellipse(x, y, size + 1, size + 1);
       }
     }
 
-    // Message de fin du jeu en cas de match nul ou victoire
-    if (gameOver) {
-      fill(30, 227);
-      rect(0, -100, width, height);
-      fill(255);
-      textSize(60);
-      textAlign(CENTER);
-      text("Fin du jeu !", width / 2, height / 2 - 105);
-      textSize(15);
-      text("Cliquez pour rejouer", width / 2, height - 120);
-
-      // Si checkEndGame n'a pas ete reset, c'est que le plateau est plein
-      textSize(30);
-      if (checkEndGame) {
-        text("Match nul", width / 2, height / 2 - 60);
-      } else if (!player1) {
-        fill(colorPlayer1);
-        text("Victoire des verts", width / 2, height / 2 - 60);
-      } else {
-        fill(colorPlayer2);
-        text("Victoire des roses", width / 2, height / 2 - 60);
-      }
-    }
-
-    // Verification de la victoire
+    // Quand le jeton a fini son animation, 
+    // on peut verifier si le jeu est termine
     if (checkEndGame) {
-      gameOver = victory();
+      // Verification de la victoire
+      if (victory()) {
+        fill(30, 227);
+        rect(0, -100, width, height);
+        fill(255);
+        textSize(60);
+        textAlign(CENTER);
+        text("Fin du jeu !", width / 2, height / 2 - 105);
+        textSize(30);
+        if (!player1) {
+          fill(colorPlayer1);
+          text("Victoire des verts", width / 2, height / 2 - 60);
+        } else {
+          fill(colorPlayer2);
+          text("Victoire des roses", width / 2, height / 2 - 60);
+        }
+        fill(255);
+        textSize(15);
+        text("Cliquez pour rejouer", width / 2, height - 120);
+        gameOver = true;
+      } 
+      // Si aucun vainqueur n'a ete detecte, 
+      // verifie si le plateau est plein. Auquel cas, match nul
+      else if (tie()) {
+        fill(30, 227);
+        rect(0, -100, width, height);
+        fill(255);
+        textSize(60);
+        textAlign(CENTER);
+        text("Fin du jeu !", width / 2, height / 2 - 105);
+        textSize(30);
+        text("Match nul", width / 2, height / 2 - 60);
+        textSize(15);
+        text("Cliquez pour rejouer", width / 2, height - 120);
+        gameOver = true;
+      }
     }
   }
 
   /**
-   * Genere un nouveau jeton dans la colonne selectionnee. Si le jeu est termine
-   * et que le joueur clic a nouveau, prepare le plateau pour une nouvelle
-   * partie
+   * Si le jeu est en cours, genere un nouveau jeton dans la colonne 
+   * selectionnee. Si le jeu est termine et que le joueur clic a nouveau, 
+   * prepare le plateau pour une nouvelle partie
    */
   @Override
   public void mousePressed() {
@@ -207,10 +222,21 @@ public class PuissanceQuatre extends PApplet {
       doOnce = false;
     }
   }
+  
+  /** Affiche les jetons places */
+  public void showTokens() {
+    for (int i = 0; i < nbCols; i++) {
+      for (int j = 0; j < nbRows; j++) {
+        if (placed[i][j] != null) {
+          placed[i][j].show();
+        }
+      }
+    }
+  }
 
   /** Affiche le plateau */
   public void showBoard() {
-    noStroke();
+    //noStroke();
     for (int i = 0; i < nbCols; i++) {
       for (int j = 0; j < nbRows; j++) {
         pushMatrix();
@@ -223,13 +249,11 @@ public class PuissanceQuatre extends PApplet {
 
   /**
    * Verifie les 69 combinaisons de victoire (Toutes les lignes, colonnes et
-   * diagonales). Met fin au jeu s'il n'y a plus de place disponible
-   * @return True si une fin du jeu a ete detectee
+   * diagonales).
+   * @return True si un vainqueur a ete detecte
    */
   public boolean victory() {
-    boolean endGame = false;
-
-    // Verifier les lignes
+    // Verifie les lignes
     for (int i = 0; i < nbCols - 3; i++) {
       for (int j = 0; j < nbRows; j++) {
         if (placed[i][j] != null
@@ -240,18 +264,18 @@ public class PuissanceQuatre extends PApplet {
             && placed[i + 1][j].isPlayer1()
             && placed[i + 2][j].isPlayer1()
             && placed[i + 3][j].isPlayer1()) {
-            endGame = true;
+            return true;
           } else if (!placed[i][j].isPlayer1()
             && !placed[i + 1][j].isPlayer1()
             && !placed[i + 2][j].isPlayer1()
             && !placed[i + 3][j].isPlayer1()) {
-            endGame = true;
+            return true;
           }
         }
       }
     }
 
-    // Verifier les colonnes
+    // Verifie les colonnes
     for (int i = 0; i < nbCols; i++) {
       for (int j = 0; j < nbRows - 3; j++) {
         if (placed[i][j] != null
@@ -262,18 +286,18 @@ public class PuissanceQuatre extends PApplet {
             && placed[i][j + 1].isPlayer1()
             && placed[i][j + 2].isPlayer1()
             && placed[i][j + 3].isPlayer1()) {
-            endGame = true;
+            return true;
           } else if (!placed[i][j].isPlayer1()
             && !placed[i][j + 1].isPlayer1()
             && !placed[i][j + 2].isPlayer1()
             && !placed[i][j + 3].isPlayer1()) {
-            endGame = true;
+            return true;
           }
         }
       }
     }
 
-    // Verifier les diagonales TopLeft BottomRight
+    // Verifie les diagonales TopLeft BottomRight
     for (int i = 0; i < nbCols - 3; i++) {
       for (int j = 0; j < nbRows - 3; j++) {
         if (placed[i][j] != null
@@ -284,18 +308,18 @@ public class PuissanceQuatre extends PApplet {
             && placed[i + 1][j + 1].isPlayer1()
             && placed[i + 2][j + 2].isPlayer1()
             && placed[i + 3][j + 3].isPlayer1()) {
-            endGame = true;
+            return true;
           } else if (!placed[i][j].isPlayer1()
             && !placed[i + 1][j + 1].isPlayer1()
             && !placed[i + 2][j + 2].isPlayer1()
             && !placed[i + 3][j + 3].isPlayer1()) {
-            endGame = true;
+            return true;
           }
         }
       }
     }
 
-    // Verifier les diagonales TopRight BottomLeft
+    // Verifie les diagonales TopRight BottomLeft
     for (int i = 3; i < nbCols; i++) {
       for (int j = 0; j < nbRows - 3; j++) {
         if (placed[i][j] != null
@@ -306,59 +330,62 @@ public class PuissanceQuatre extends PApplet {
             && placed[i - 1][j + 1].isPlayer1()
             && placed[i - 2][j + 2].isPlayer1()
             && placed[i - 3][j + 3].isPlayer1()) {
-            endGame = true;
+            return true;
           } else if (!placed[i][j].isPlayer1()
             && !placed[i - 1][j + 1].isPlayer1()
             && !placed[i - 2][j + 2].isPlayer1()
             && !placed[i - 3][j + 3].isPlayer1()) {
-            endGame = true;
+            return true;
           }
         }
       }
     }
 
-    // Si aucun vainqueur n'a ete trouve, 
-    // verifie si le plateau est plein
-    if (!endGame) {
-      int nbJetonsTotal = 0;
-      for (int i = 0; i < nbCols; i++) {
-        for (int j = 0; j < nbRows; j++) {
-          if (placed[i][j] != null) {
-            nbJetonsTotal++;
-          }
+    return false;
+  }
+
+  /**
+   * Verifie si la grille de jeu est pleine.
+   * SIDE NOTE : Cette methode aurait du s'appeler draw, puisqu'elle juge s'il
+   * y a match nul, mais c'est deja le nom d'une methode heritee de PApplet
+   * @return True si la grille n'a plus d'espace disponible
+   */
+  public boolean tie() {
+    for (int i = 0; i < nbCols; i++) {
+      for (int j = 0; j < nbRows; j++) {
+        if (placed[i][j] == null) {
+          return false;
         }
       }
-      // Si le plateau est plein, 
-      // on sort sans reset checkEndGame
-      if (nbJetonsTotal == 42) {
-        return true;
-      }
     }
-
-    checkEndGame = false;
-    return endGame;
+    return true;
   }
 
   /**
    * Creation d'une forme carree avec un cercle vide au centre, pour laisser
    * voir les jetons a travers
+   * @param size Taille de la forme
+   * @return Forme custom pour voir les jetons
    */
-  public void buildShape() {
+  public PShape buildShape(int size) {
     // N'est execute qu'une fois en debut de programme
-    emptyCircle = createShape();
-    emptyCircle.setFill(color(19, 19, 17));
-    emptyCircle.setStroke(false);
-    emptyCircle.beginShape();
-    emptyCircle.vertex(size, 0);
-    emptyCircle.vertex(0, 0);
-    emptyCircle.vertex(0, size);
-    emptyCircle.vertex(size, size);
-    emptyCircle.vertex(size, 0);
+    PShape shape = createShape();
+    shape.setFill(color(19, 19, 17));
+    shape.setStroke(false);
+    shape.beginShape();
+    // Carre exterieur
+    shape.vertex(size, 0);
+    shape.vertex(0, 0);
+    shape.vertex(0, size);
+    shape.vertex(size, size);
+    shape.vertex(size, 0);
+    // Cercle interieur
     for (int i = 0; i <= 360; i++) {
       PVector v = PVector.fromAngle(i * PI / 180).setMag((size / 2) * 0.9f);
-      emptyCircle.vertex(v.x + size / 2, v.y + size / 2);
+      shape.vertex(v.x + size / 2, v.y + size / 2);
     }
-    emptyCircle.endShape(CLOSE);
+    shape.endShape(CLOSE);
+    return shape;
   }
 
 }
