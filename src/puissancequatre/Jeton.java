@@ -9,6 +9,8 @@ import processing.core.PApplet;
 public class Jeton {
   /** PApplet parent */
   private final PApplet app;
+  /** Rayon du jeton */
+  private final int radius;
   /** Position x */
   private final float x;
   /** Position y */
@@ -16,13 +18,13 @@ public class Jeton {
   /** Velocite (animation) */
   private float yVel;
   /** Acceleration (animation) */
-  private float yAcc;
+  private final float yAcc;
   /** Position y max (animation) */
   private final float yMax;
-  /** Rayon du jeton */
-  private final int radius;
-  /** Couleur du jeton */
-  private final int color;
+  /** Couleur du joueur 1 */
+  private final int colorPlayer1;
+  /** Couleur du joueur 2 */
+  private final int colorPlayer2;
   /** Repere si le jeton appartient aux verts ou aux roses */
   private final boolean player1;
 
@@ -39,32 +41,44 @@ public class Jeton {
     x = (app.mouseX / size) * size + radius;
     y = -radius;
     yVel = 0;
-    yAcc = 0.8f;
+    yAcc = .8f;
     yMax = computeYMax(placed);
     this.player1 = player1;
-    if (player1) {
-      color = app.color(191, 231, 0);
-    } else {
-      color = app.color(231, 0, 191);
-    }
+    colorPlayer1 = app.color(191, 231, 0); // Vert
+    colorPlayer2 = app.color(231, 0, 191); // Rose
   }
 
-  /** Affiche le jeton pendant l'animation */
-  public void animate() {
-    app.fill(color);
+  /** 
+   * Affiche le jeton pendant l'animation. L'animation est finie quand le jeton
+   * a depasse sa position finale.
+   * @return True si l'animation est finie 
+   */
+  public boolean animate() {
+    app.noStroke();
+    if(player1) {
+      app.fill(colorPlayer1);
+    } else {
+      app.fill(colorPlayer2);
+    }
     app.ellipse(x, y, radius * 2, radius * 2);
     y += yVel;
     yVel += yAcc;
     if (y >= yMax) {
       y = yMax;
       yVel = 0;
-      yAcc = 0;
+      return true;
     }
+    return false;
   }
 
   /** Affiche le jeton quand il est place */
   public void show() {
-    app.fill(color);
+    app.noStroke();
+    if(player1) {
+      app.fill(colorPlayer1);
+    } else {
+      app.fill(colorPlayer2);
+    }
     app.ellipse(x, y, radius * 2, radius * 2);
   }
 
@@ -99,6 +113,5 @@ public class Jeton {
   public float getX() { return x; }
   public float getY() { return y; }
   public float getYMax() { return yMax; }
-  public float getVel() { return yVel; }
   public boolean isPlayer1() { return player1; }
 }
